@@ -1,0 +1,3743 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relative Performance Analyzer | Convertible Arbitrage</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #111820;
+            --bg-tertiary: #1a2332;
+            --accent-green: #00ff88;
+            --accent-red: #ff3366;
+            --accent-blue: #00b4ff;
+            --accent-orange: #ff9500;
+            --accent-purple: #a855f7;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #484f58;
+            --border-color: #21262d;
+            --grid-color: #161b22;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .header {
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem 2rem;
+        }
+
+        .header-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .logo-text h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-text span {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .upload-section {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-section:hover {
+            border-color: var(--accent-blue);
+            background: var(--bg-tertiary);
+        }
+
+        .upload-section.active {
+            border-color: var(--accent-green);
+            border-style: solid;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .upload-text strong {
+            color: var(--accent-blue);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .control-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .control-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .control-header::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: var(--accent-blue);
+            border-radius: 2px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="date"], select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="date"]:focus, select:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .date-range {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .slider-container {
+            padding: 0.5rem 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 180, 255, 0.4);
+        }
+
+        .slider-value {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .slider-value .current {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1200px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .chart-panel.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .chart-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .chart-metrics {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .metric {
+            text-align: right;
+        }
+
+        .metric-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .metric-value.positive { color: var(--accent-green); }
+        .metric-value.negative { color: var(--accent-red); }
+        .metric-value.neutral { color: var(--accent-blue); }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .stat-card.green { border-left-color: var(--accent-green); }
+        .stat-card.red { border-left-color: var(--accent-red); }
+        .stat-card.orange { border-left-color: var(--accent-orange); }
+        .stat-card.purple { border-left-color: var(--accent-purple); }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .correlation-matrix {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .matrix-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: auto repeat(4, 1fr);
+            gap: 4px;
+            font-size: 0.75rem;
+        }
+
+        .matrix-cell {
+            padding: 0.75rem;
+            text-align: center;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+
+        .matrix-cell.header {
+            background: var(--bg-primary);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.65rem;
+        }
+
+        .matrix-cell.high-positive { background: rgba(0, 255, 136, 0.3); }
+        .matrix-cell.medium-positive { background: rgba(0, 255, 136, 0.15); }
+        .matrix-cell.low { background: var(--bg-tertiary); }
+        .matrix-cell.medium-negative { background: rgba(255, 51, 102, 0.15); }
+        .matrix-cell.high-negative { background: rgba(255, 51, 102, 0.3); }
+
+        .ranking-gauges {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            padding: 1rem 0;
+        }
+
+        .gauge-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .gauge-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.1em;
+        }
+
+        .gauge-bar {
+            position: relative;
+            height: 24px;
+            background: linear-gradient(90deg, 
+                #00ff88 0%, 
+                #00ff88 20%,
+                #ffff00 35%,
+                #ff9500 50%,
+                #ff3366 65%,
+                #ff3366 100%
+            );
+            border-radius: 4px;
+            overflow: visible;
+        }
+
+        .gauge-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            transition: width 0.5s ease;
+        }
+
+        .gauge-fill.equity { border-radius: 4px 0 0 4px; }
+        .gauge-fill.cb { border-radius: 4px 0 0 4px; }
+        .gauge-fill.combined { border-radius: 4px 0 0 4px; }
+
+        .gauge-marker {
+            position: absolute;
+            top: -4px;
+            width: 4px;
+            height: 32px;
+            background: white;
+            border-radius: 2px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            transform: translateX(-50%);
+            transition: left 0.5s ease;
+        }
+
+        .gauge-scale {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .signal-interpretation {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .signal-interpretation .signal-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .signal-interpretation .signal-title.bullish { color: var(--accent-green); }
+        .signal-interpretation .signal-title.bearish { color: var(--accent-red); }
+        .signal-interpretation .signal-title.neutral { color: var(--accent-orange); }
+
+        .signal-interpretation .signal-body {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .ranking-table th, .ranking-table td {
+            padding: 0.75rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ranking-table th {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+        }
+
+        .ranking-table td.extreme-low { color: var(--accent-green); font-weight: 600; }
+        .ranking-table td.low { color: #7fff7f; }
+        .ranking-table td.neutral { color: var(--text-primary); }
+        .ranking-table td.high { color: #ff7f7f; }
+        .ranking-table td.extreme-high { color: var(--accent-red); font-weight: 600; }
+
+        /* Outperformance Section Styles */
+        .outperformance-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .section-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .section-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .outperf-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1000px) {
+            .outperf-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .outperf-card {
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .outperf-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .outperf-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .outperf-dot.equity { background: var(--accent-green); }
+        .outperf-dot.cb { background: var(--accent-purple); }
+
+        .outperf-main-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .main-stat {
+            text-align: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .main-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .main-stat-value.positive { color: var(--accent-green); }
+        .main-stat-value.negative { color: var(--accent-red); }
+
+        .main-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-top: 0.25rem;
+        }
+
+        .main-stat-sub {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        .distribution-stats {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .dist-row {
+            display: grid;
+            grid-template-columns: 1.2fr repeat(5, 1fr);
+            gap: 0.5rem;
+            font-size: 0.7rem;
+            padding: 0.4rem 0;
+        }
+
+        .dist-row.header {
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .dist-row.values span {
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .dist-row.values span:first-child {
+            text-align: left;
+            color: var(--text-secondary);
+        }
+
+        .extra-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .extra-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .extra-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .extra-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .probability-viz {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 1200px) {
+            .probability-viz {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .prob-chart-container {
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .prob-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .prob-scenario {
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .scenario-header {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .scenario-header.bullish { color: var(--accent-green); }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .scenario-item {
+            display: flex;
+            flex-direction: column;
+            padding: 0.6rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .scenario-prob {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .scenario-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        .conditional-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .cond-stat {
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .cond-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .cond-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin: 0.25rem 0;
+        }
+
+        .cond-value.positive { color: var(--accent-green); }
+        .cond-value.negative { color: var(--accent-red); }
+
+        .cond-desc {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        /* Options Strategy Section */
+        .options-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .options-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 1200px) {
+            .options-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .greeks-display {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 1000px) {
+            .greeks-display {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .greek-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .greek-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .greek-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .greek-sub {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .strategy-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 1000px) {
+            .strategy-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .strat-stat-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .strat-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .strat-stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .strat-stat-value.positive { color: var(--accent-green); }
+        .strat-stat-value.negative { color: var(--accent-red); }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .hidden { display: none; }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .legend-custom {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .info-banner {
+            background: linear-gradient(135deg, rgba(0, 180, 255, 0.1), rgba(168, 85, 247, 0.1));
+            border: 1px solid rgba(0, 180, 255, 0.3);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .info-banner::before {
+            content: 'ℹ️';
+            flex-shrink: 0;
+        }
+
+        .quick-periods {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .quick-btn {
+            padding: 0.4rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .quick-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: var(--bg-primary);
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .export-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .export-btn:hover {
+            border-color: var(--accent-blue);
+            background: var(--bg-secondary);
+        }
+
+        .export-btn.excel:hover {
+            border-color: var(--accent-green);
+        }
+
+        .export-btn .export-icon {
+            font-size: 1rem;
+        }
+
+        .chart-export-btn {
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .chart-export-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .chart-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-green);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">RP</div>
+                <div class="logo-text">
+                    <h1>Relative Performance Analyzer</h1>
+                    <span>Convertible Bond Arbitrage | Cross-Asset Analysis</span>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span id="statusText">Awaiting data...</span>
+            </div>
+            <div class="export-buttons" id="exportButtons" style="display: none;">
+                <button class="export-btn" onclick="exportAllCharts()">
+                    <span class="export-icon">📷</span> Export All Charts
+                </button>
+                <button class="export-btn excel" onclick="exportToExcel()">
+                    <span class="export-icon">📊</span> Export to Excel
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <div class="upload-section" id="uploadSection" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📊</div>
+            <div class="upload-text">
+                <strong>Drop Excel file here</strong> or click to browse<br>
+                <small>Supports .xlsx format with daily pricing data</small>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls">
+        </div>
+
+        <div id="analysisSection" class="hidden">
+            <div class="info-banner">
+                <div>
+                    <strong>Analysis Framework:</strong> Compares the 40% SPX + 60% NDX composite against FTSE US Focus Parity USD-hedged, 
+                    then examines how this equity basis differential may explain the relative performance between BGCB EUR and FTSE Global Focus Hedged (EUR).
+                </div>
+            </div>
+
+            <div class="controls-grid">
+                <div class="control-panel">
+                    <div class="control-header">Date Range</div>
+                    <div class="date-range">
+                        <div class="input-group">
+                            <label for="startDate">Start Date</label>
+                            <input type="date" id="startDate">
+                        </div>
+                        <div class="input-group">
+                            <label for="endDate">End Date</label>
+                            <input type="date" id="endDate">
+                        </div>
+                    </div>
+                    <div class="quick-periods">
+                        <button class="quick-btn" onclick="setQuickPeriod('3m')">3M</button>
+                        <button class="quick-btn" onclick="setQuickPeriod('6m')">6M</button>
+                        <button class="quick-btn" onclick="setQuickPeriod('1y')">1Y</button>
+                        <button class="quick-btn" onclick="setQuickPeriod('3y')">3Y</button>
+                        <button class="quick-btn" onclick="setQuickPeriod('5y')">5Y</button>
+                        <button class="quick-btn" onclick="setQuickPeriod('ytd')">YTD</button>
+                        <button class="quick-btn" onclick="setQuickPeriod('all')">MAX</button>
+                    </div>
+                </div>
+
+                <div class="control-panel">
+                    <div class="control-header">Performance Window</div>
+                    <div class="input-group">
+                        <label for="perfWindow">Rolling Performance Duration</label>
+                        <div class="slider-container">
+                            <input type="range" id="perfWindow" min="21" max="252" value="63" step="21">
+                            <div class="slider-value">
+                                <span>1M</span>
+                                <span class="current" id="perfWindowValue">3M (63 days)</span>
+                                <span>12M</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-panel">
+                    <div class="control-header">Composite Weights</div>
+                    <div class="input-group">
+                        <label for="spxWeight">SPX Weight: <span id="spxWeightValue">40%</span></label>
+                        <div class="slider-container">
+                            <input type="range" id="spxWeight" min="0" max="100" value="40" step="5">
+                            <div class="slider-value">
+                                <span>0%</span>
+                                <span>NDX: <span id="ndxWeightValue">60%</span></span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid" id="summaryStats">
+                <div class="stat-card green">
+                    <div class="stat-label">Composite 40/60 Perf</div>
+                    <div class="stat-value" id="compositePerf">--</div>
+                    <div class="stat-change" id="compositePerfPeriod">Selected period</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">FTSE US Parity Perf</div>
+                    <div class="stat-value" id="parityPerf">--</div>
+                    <div class="stat-change" id="parityPerfPeriod">Selected period</div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-label">Relative (Equity Basis)</div>
+                    <div class="stat-value" id="equityBasis">--</div>
+                    <div class="stat-change">Composite vs Parity</div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-label">BGCB vs Global Focus</div>
+                    <div class="stat-value" id="cbRelative">--</div>
+                    <div class="stat-change">CB relative pricing</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-label">Correlation</div>
+                    <div class="stat-value" id="correlation">--</div>
+                    <div class="stat-change">Equity Basis ↔ CB Relative</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">R² Explanatory</div>
+                    <div class="stat-value" id="rSquared">--</div>
+                    <div class="stat-change">Variance explained</div>
+                </div>
+            </div>
+
+            <!-- Outperformance Statistics Section -->
+            <div class="outperformance-section">
+                <div class="section-header">
+                    <h2>📊 Outperformance Analysis</h2>
+                    <span class="section-subtitle">Rolling window probability and distribution statistics</span>
+                </div>
+                
+                <div class="outperf-grid">
+                    <!-- Equity Basis Stats -->
+                    <div class="outperf-card">
+                        <div class="outperf-title">
+                            <span class="outperf-dot equity"></span>
+                            Equity Basis (Composite vs Parity)
+                        </div>
+                        <div class="outperf-main-stats">
+                            <div class="main-stat">
+                                <div class="main-stat-value" id="eqHitRatio">--</div>
+                                <div class="main-stat-label">Hit Ratio</div>
+                                <div class="main-stat-sub">Probability of outperformance</div>
+                            </div>
+                            <div class="main-stat">
+                                <div class="main-stat-value" id="eqAvgOutperf">--</div>
+                                <div class="main-stat-label">Avg Outperformance</div>
+                                <div class="main-stat-sub">When positive</div>
+                            </div>
+                            <div class="main-stat">
+                                <div class="main-stat-value" id="eqAvgUnderperf">--</div>
+                                <div class="main-stat-label">Avg Underperformance</div>
+                                <div class="main-stat-sub">When negative</div>
+                            </div>
+                        </div>
+                        <div class="distribution-stats">
+                            <div class="dist-row header">
+                                <span>Percentile</span>
+                                <span>5th</span>
+                                <span>25th</span>
+                                <span>Median</span>
+                                <span>75th</span>
+                                <span>95th</span>
+                            </div>
+                            <div class="dist-row values" id="eqDistRow">
+                                <span>Value</span>
+                                <span>--</span>
+                                <span>--</span>
+                                <span>--</span>
+                                <span>--</span>
+                                <span>--</span>
+                            </div>
+                        </div>
+                        <div class="extra-stats">
+                            <div class="extra-stat">
+                                <span class="extra-label">Mean</span>
+                                <span class="extra-value" id="eqMean">--</span>
+                            </div>
+                            <div class="extra-stat">
+                                <span class="extra-label">Std Dev</span>
+                                <span class="extra-value" id="eqStd">--</span>
+                            </div>
+                            <div class="extra-stat">
+                                <span class="extra-label">Skewness</span>
+                                <span class="extra-value" id="eqSkew">--</span>
+                            </div>
+                            <div class="extra-stat">
+                                <span class="extra-label">Sharpe</span>
+                                <span class="extra-value" id="eqSharpe">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CB Relative Stats -->
+                    <div class="outperf-card">
+                        <div class="outperf-title">
+                            <span class="outperf-dot cb"></span>
+                            CB Relative (BGCB vs Global Focus)
+                        </div>
+                        <div class="outperf-main-stats">
+                            <div class="main-stat">
+                                <div class="main-stat-value" id="cbHitRatio">--</div>
+                                <div class="main-stat-label">Hit Ratio</div>
+                                <div class="main-stat-sub">Probability of outperformance</div>
+                            </div>
+                            <div class="main-stat">
+                                <div class="main-stat-value" id="cbAvgOutperf">--</div>
+                                <div class="main-stat-label">Avg Outperformance</div>
+                                <div class="main-stat-sub">When positive</div>
+                            </div>
+                            <div class="main-stat">
+                                <div class="main-stat-value" id="cbAvgUnderperf">--</div>
+                                <div class="main-stat-label">Avg Underperformance</div>
+                                <div class="main-stat-sub">When negative</div>
+                            </div>
+                        </div>
+                        <div class="distribution-stats">
+                            <div class="dist-row header">
+                                <span>Percentile</span>
+                                <span>5th</span>
+                                <span>25th</span>
+                                <span>Median</span>
+                                <span>75th</span>
+                                <span>95th</span>
+                            </div>
+                            <div class="dist-row values" id="cbDistRow">
+                                <span>Value</span>
+                                <span>--</span>
+                                <span>--</span>
+                                <span>--</span>
+                                <span>--</span>
+                                <span>--</span>
+                            </div>
+                        </div>
+                        <div class="extra-stats">
+                            <div class="extra-stat">
+                                <span class="extra-label">Mean</span>
+                                <span class="extra-value" id="cbMean">--</span>
+                            </div>
+                            <div class="extra-stat">
+                                <span class="extra-label">Std Dev</span>
+                                <span class="extra-value" id="cbStd">--</span>
+                            </div>
+                            <div class="extra-stat">
+                                <span class="extra-label">Skewness</span>
+                                <span class="extra-value" id="cbSkew">--</span>
+                            </div>
+                            <div class="extra-stat">
+                                <span class="extra-label">Sharpe</span>
+                                <span class="extra-value" id="cbSharpe">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Probability Visualization -->
+                <div class="probability-viz">
+                    <div class="prob-chart-container">
+                        <div class="chart-header">
+                            <div>
+                                <div class="chart-title">Distribution of Rolling Returns</div>
+                                <div class="chart-subtitle">With probability density and key percentiles</div>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper" style="height: 280px;">
+                            <canvas id="distributionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="prob-summary">
+                        <div class="prob-scenario">
+                            <div class="scenario-header bullish">🎯 Expected Scenarios</div>
+                            <div class="scenario-grid">
+                                <div class="scenario-item">
+                                    <span class="scenario-prob" id="probBothPos">--</span>
+                                    <span class="scenario-label">Both Outperform</span>
+                                </div>
+                                <div class="scenario-item">
+                                    <span class="scenario-prob" id="probBothNeg">--</span>
+                                    <span class="scenario-label">Both Underperform</span>
+                                </div>
+                                <div class="scenario-item">
+                                    <span class="scenario-prob" id="probEqOnly">--</span>
+                                    <span class="scenario-label">Only Equity Outperforms</span>
+                                </div>
+                                <div class="scenario-item">
+                                    <span class="scenario-prob" id="probCbOnly">--</span>
+                                    <span class="scenario-label">Only CB Outperforms</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="prob-scenario">
+                            <div class="scenario-header">📈 Conditional Expectations</div>
+                            <div class="conditional-stats">
+                                <div class="cond-stat">
+                                    <div class="cond-label">E[CB | Equity > 0]</div>
+                                    <div class="cond-value" id="expCbGivenEqPos">--</div>
+                                    <div class="cond-desc">Expected CB return when equity basis is positive</div>
+                                </div>
+                                <div class="cond-stat">
+                                    <div class="cond-label">E[CB | Equity < 0]</div>
+                                    <div class="cond-value" id="expCbGivenEqNeg">--</div>
+                                    <div class="cond-desc">Expected CB return when equity basis is negative</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-panel full-width">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Rolling Relative Performance</div>
+                            <div class="chart-subtitle">Equity basis (Composite vs Parity) and CB relative (BGCB vs Global Focus)</div>
+                        </div>
+                        <div class="chart-actions">
+                            <button class="chart-export-btn" onclick="exportChart('relativeChart', 'rolling_relative_performance')">📷 JPEG</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="relativeChart"></canvas>
+                    </div>
+                    <div class="legend-custom">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #00ff88;"></div>
+                            <span>Equity Basis (Composite - Parity)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #a855f7;"></div>
+                            <span>CB Relative (BGCB - Global Focus)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-panel">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Index Levels (Rebased)</div>
+                            <div class="chart-subtitle">Normalized to 100 at period start</div>
+                        </div>
+                        <div class="chart-actions">
+                            <button class="chart-export-btn" onclick="exportChart('levelChart', 'index_levels_rebased')">📷 JPEG</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="levelChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-panel">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Scatter: Equity Basis vs CB Relative</div>
+                            <div class="chart-subtitle">Rolling performance correlation</div>
+                        </div>
+                        <div class="chart-actions">
+                            <button class="chart-export-btn" onclick="exportChart('scatterChart', 'scatter_correlation')">📷 JPEG</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="scatterChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-panel full-width">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Cumulative Performance Spread</div>
+                            <div class="chart-subtitle">Running total of relative performance differentials</div>
+                        </div>
+                        <div class="chart-actions">
+                            <button class="chart-export-btn" onclick="exportChart('cumulativeChart', 'cumulative_spread')">📷 JPEG</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="cumulativeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-panel">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Percentile Ranking</div>
+                            <div class="chart-subtitle">Current value vs historical distribution (0-100%)</div>
+                        </div>
+                        <div class="chart-actions">
+                            <button class="chart-export-btn" onclick="exportChart('rankingChart', 'percentile_ranking')">📷 JPEG</button>
+                        </div>
+                    </div>
+                    <div class="chart-metrics">
+                            <div class="metric">
+                                <div class="metric-label">Equity Basis Pctl</div>
+                                <div class="metric-value neutral" id="equityPctl">--</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">CB Relative Pctl</div>
+                                <div class="metric-value neutral" id="cbPctl">--</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="rankingChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-panel">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Z-Score Analysis</div>
+                            <div class="chart-subtitle">Standard deviations from mean</div>
+                        </div>
+                        <div class="chart-actions">
+                            <button class="chart-export-btn" onclick="exportChart('zscoreChart', 'zscore_analysis')">📷 JPEG</button>
+                        </div>
+                    </div>
+                    <div class="chart-metrics">
+                            <div class="metric">
+                                <div class="metric-label">Equity Z</div>
+                                <div class="metric-value" id="equityZ">--</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">CB Z</div>
+                                <div class="metric-value" id="cbZ">--</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="zscoreChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-panel full-width">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Distribution & Current Positioning</div>
+                            <div class="chart-subtitle">Histogram with current values marked</div>
+                        </div>
+                        <div class="chart-actions">
+                            <button class="chart-export-btn" onclick="exportChart('histogramChart', 'distribution_histogram')">📷 JPEG</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper" style="height: 250px;">
+                        <canvas id="histogramChart"></canvas>
+                    </div>
+                    <div class="legend-custom">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: rgba(0, 255, 136, 0.5);"></div>
+                            <span>Equity Basis Distribution</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: rgba(168, 85, 247, 0.5);"></div>
+                            <span>CB Relative Distribution</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff3366; width: 20px; height: 3px;"></div>
+                            <span>Current Values</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-panel full-width">
+                    <div class="chart-header">
+                        <div>
+                            <div class="chart-title">Ranking Signal Heatmap</div>
+                            <div class="chart-subtitle">Combined equity basis & CB relative percentile over time</div>
+                        </div>
+                    </div>
+                    <div class="ranking-gauges" id="rankingGauges">
+                        <div class="gauge-container">
+                            <div class="gauge-label">EQUITY BASIS</div>
+                            <div class="gauge-bar">
+                                <div class="gauge-fill equity" id="equityGauge"></div>
+                                <div class="gauge-marker" id="equityMarker"></div>
+                            </div>
+                            <div class="gauge-scale">
+                                <span>0%</span>
+                                <span>CHEAP</span>
+                                <span>50%</span>
+                                <span>RICH</span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                        <div class="gauge-container">
+                            <div class="gauge-label">CB RELATIVE</div>
+                            <div class="gauge-bar">
+                                <div class="gauge-fill cb" id="cbGauge"></div>
+                                <div class="gauge-marker" id="cbMarker"></div>
+                            </div>
+                            <div class="gauge-scale">
+                                <span>0%</span>
+                                <span>CHEAP</span>
+                                <span>50%</span>
+                                <span>RICH</span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                        <div class="gauge-container">
+                            <div class="gauge-label">COMBINED SIGNAL</div>
+                            <div class="gauge-bar">
+                                <div class="gauge-fill combined" id="combinedGauge"></div>
+                                <div class="gauge-marker" id="combinedMarker"></div>
+                            </div>
+                            <div class="gauge-scale">
+                                <span>0%</span>
+                                <span>BUY CB</span>
+                                <span>50%</span>
+                                <span>SELL CB</span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="signal-interpretation" id="signalInterpretation">
+                        <!-- Dynamic interpretation -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="correlation-matrix">
+                <div class="matrix-title">Rolling Correlation Matrix</div>
+                <div class="matrix-grid" id="correlationMatrix">
+                    <!-- Generated dynamically -->
+                </div>
+            </div>
+
+            <!-- Options Strategy Section -->
+            <div class="options-section">
+                <div class="section-header">
+                    <h2>📈 Long-Dated Call Options Strategy</h2>
+                    <span class="section-subtitle">Theoretical performance of rolling calls on SPX/NDX composite vs direct equity exposure</span>
+                </div>
+
+                <div class="options-controls">
+                    <div class="control-panel">
+                        <div class="control-header">Option Parameters</div>
+                        <div class="input-group">
+                            <label for="optionMaturity">Maturity (months)</label>
+                            <div class="slider-container">
+                                <input type="range" id="optionMaturity" min="12" max="36" value="18" step="1">
+                                <div class="slider-value">
+                                    <span>12M</span>
+                                    <span class="current" id="maturityValue">18 months</span>
+                                    <span>36M</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="strikePercent">Strike (% of Spot)</label>
+                            <div class="slider-container">
+                                <input type="range" id="strikePercent" min="80" max="120" value="100" step="5">
+                                <div class="slider-value">
+                                    <span>80% ITM</span>
+                                    <span class="current" id="strikeValue">100% ATM</span>
+                                    <span>120% OTM</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-panel">
+                        <div class="control-header">Market Parameters</div>
+                        <div class="input-group">
+                            <label for="impliedVol">Implied Volatility (%)</label>
+                            <div class="slider-container">
+                                <input type="range" id="impliedVol" min="10" max="50" value="20" step="1">
+                                <div class="slider-value">
+                                    <span>10%</span>
+                                    <span class="current" id="volValue">20%</span>
+                                    <span>50%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="riskFreeRate">Risk-Free Rate (%)</label>
+                            <div class="slider-container">
+                                <input type="range" id="riskFreeRate" min="0" max="8" value="4" step="0.25">
+                                <div class="slider-value">
+                                    <span>0%</span>
+                                    <span class="current" id="rateValue">4.00%</span>
+                                    <span>8%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-panel">
+                        <div class="control-header">Strategy Settings</div>
+                        <div class="input-group">
+                            <label for="rollFrequency">Roll Frequency (months)</label>
+                            <div class="slider-container">
+                                <input type="range" id="rollFrequency" min="1" max="12" value="3" step="1">
+                                <div class="slider-value">
+                                    <span>1M</span>
+                                    <span class="current" id="rollValue">3 months</span>
+                                    <span>12M</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="leverageRatio">Notional Leverage</label>
+                            <div class="slider-container">
+                                <input type="range" id="leverageRatio" min="1" max="5" value="1" step="0.5">
+                                <div class="slider-value">
+                                    <span>1x</span>
+                                    <span class="current" id="leverageValue">1.0x</span>
+                                    <span>5x</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option Greeks Display -->
+                <div class="greeks-display">
+                    <div class="greek-card">
+                        <div class="greek-label">Call Price</div>
+                        <div class="greek-value" id="callPrice">--</div>
+                        <div class="greek-sub">% of spot</div>
+                    </div>
+                    <div class="greek-card">
+                        <div class="greek-label">Delta (Δ)</div>
+                        <div class="greek-value" id="optionDelta">--</div>
+                        <div class="greek-sub">Equity sensitivity</div>
+                    </div>
+                    <div class="greek-card">
+                        <div class="greek-label">Gamma (Γ)</div>
+                        <div class="greek-value" id="optionGamma">--</div>
+                        <div class="greek-sub">Delta sensitivity</div>
+                    </div>
+                    <div class="greek-card">
+                        <div class="greek-label">Theta (Θ)</div>
+                        <div class="greek-value" id="optionTheta">--</div>
+                        <div class="greek-sub">Daily decay (%)</div>
+                    </div>
+                    <div class="greek-card">
+                        <div class="greek-label">Vega (ν)</div>
+                        <div class="greek-value" id="optionVega">--</div>
+                        <div class="greek-sub">Per 1% vol move</div>
+                    </div>
+                    <div class="greek-card">
+                        <div class="greek-label">Leverage</div>
+                        <div class="greek-value" id="optionLeverage">--</div>
+                        <div class="greek-sub">Delta / Premium</div>
+                    </div>
+                </div>
+
+                <!-- Strategy Performance Charts -->
+                <div class="charts-container" style="margin-top: 1.5rem;">
+                    <div class="chart-panel full-width">
+                        <div class="chart-header">
+                            <div>
+                                <div class="chart-title">Options Strategy vs Direct Equity</div>
+                                <div class="chart-subtitle">Cumulative performance comparison (rebased to 100)</div>
+                            </div>
+                            <div class="chart-actions">
+                                <button class="chart-export-btn" onclick="exportChart('optionsChart', 'options_strategy_performance')">📷 JPEG</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="optionsChart"></canvas>
+                        </div>
+                        <div class="legend-custom">
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #00ff88;"></div>
+                                <span>Composite Equity (Direct)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #00b4ff;"></div>
+                                <span>Call Options Strategy</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #ff9500;"></div>
+                                <span>Options Excess Return</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-panel">
+                        <div class="chart-header">
+                            <div>
+                                <div class="chart-title">Payoff Profile at Expiry</div>
+                                <div class="chart-subtitle">P&L vs underlying move (%)</div>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="payoffChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-panel">
+                        <div class="chart-header">
+                            <div>
+                                <div class="chart-title">Rolling Delta Exposure</div>
+                                <div class="chart-subtitle">Dynamic delta over time</div>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="deltaChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strategy Statistics -->
+                <div class="strategy-stats">
+                    <div class="strat-stat-card">
+                        <div class="strat-stat-label">Options Return</div>
+                        <div class="strat-stat-value" id="stratReturn">--</div>
+                    </div>
+                    <div class="strat-stat-card">
+                        <div class="strat-stat-label">Equity Return</div>
+                        <div class="strat-stat-value" id="equityReturnOpt">--</div>
+                    </div>
+                    <div class="strat-stat-card">
+                        <div class="strat-stat-label">Excess Return</div>
+                        <div class="strat-stat-value" id="excessReturn">--</div>
+                    </div>
+                    <div class="strat-stat-card">
+                        <div class="strat-stat-label">Options Vol</div>
+                        <div class="strat-stat-value" id="stratVol">--</div>
+                    </div>
+                    <div class="strat-stat-card">
+                        <div class="strat-stat-label">Sharpe Ratio</div>
+                        <div class="strat-stat-value" id="stratSharpe">--</div>
+                    </div>
+                    <div class="strat-stat-card">
+                        <div class="strat-stat-label">Max Drawdown</div>
+                        <div class="strat-stat-value" id="stratDrawdown">--</div>
+                    </div>
+                    <div class="strat-stat-card">
+                        <div class="strat-stat-label">Total Premium</div>
+                        <div class="strat-stat-value" id="totalPremium">--</div>
+                    </div>
+                    <div class="strat-stat-card">
+                        <div class="strat-stat-label">Avg Theta Cost</div>
+                        <div class="strat-stat-value" id="avgTheta">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast" id="toast">
+        <span class="toast-icon">✅</span>
+        <span id="toastMessage">Export completed!</span>
+    </div>
+
+    <script>
+        let rawData = [];
+        let charts = {};
+        
+        // Chart.js defaults
+        Chart.defaults.color = '#8b949e';
+        Chart.defaults.borderColor = '#21262d';
+        Chart.defaults.font.family = "'JetBrains Mono', monospace";
+        Chart.defaults.font.size = 11;
+
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+        document.getElementById('startDate').addEventListener('change', updateAnalysis);
+        document.getElementById('endDate').addEventListener('change', updateAnalysis);
+        document.getElementById('perfWindow').addEventListener('input', handlePerfWindowChange);
+        document.getElementById('spxWeight').addEventListener('input', handleWeightChange);
+
+        // Options strategy controls
+        document.getElementById('optionMaturity').addEventListener('input', handleOptionsChange);
+        document.getElementById('strikePercent').addEventListener('input', handleOptionsChange);
+        document.getElementById('impliedVol').addEventListener('input', handleOptionsChange);
+        document.getElementById('riskFreeRate').addEventListener('input', handleOptionsChange);
+        document.getElementById('rollFrequency').addEventListener('input', handleOptionsChange);
+        document.getElementById('leverageRatio').addEventListener('input', handleOptionsChange);
+
+        // Drag and drop
+        const uploadSection = document.getElementById('uploadSection');
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('active');
+        });
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('active');
+        });
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('active');
+            const file = e.dataTransfer.files[0];
+            if (file) processFile(file);
+        });
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        }
+
+        function processFile(file) {
+            document.getElementById('statusText').textContent = 'Loading...';
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet);
+                
+                rawData = json.map(row => ({
+                    date: new Date(row.Date),
+                    ftseGlobalParity: row['FTSE Global Focus Hedged Parity (EUR)'],
+                    ftseGlobalFocus: row['FTSE Global Focus Hedged (EUR)'],
+                    ftseUSParity: row['FTSE US Focus Parity USD-hedged'],
+                    ndx: row.NDX,
+                    spx: row.SPX,
+                    bgcbEUR: row['BGCB EUR'],
+                    bgcbUSD: row['BGCB USD']
+                })).filter(d => !isNaN(d.date.getTime()) && d.ndx && d.spx && d.ftseUSParity);
+
+                rawData.sort((a, b) => a.date - b.date);
+
+                // Set date range
+                const minDate = rawData[0].date;
+                const maxDate = rawData[rawData.length - 1].date;
+                
+                document.getElementById('startDate').min = formatDate(minDate);
+                document.getElementById('startDate').max = formatDate(maxDate);
+                document.getElementById('endDate').min = formatDate(minDate);
+                document.getElementById('endDate').max = formatDate(maxDate);
+                
+                // Default to last 3 years
+                const threeYearsAgo = new Date(maxDate);
+                threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+                const startDefault = threeYearsAgo > minDate ? threeYearsAgo : minDate;
+                
+                document.getElementById('startDate').value = formatDate(startDefault);
+                document.getElementById('endDate').value = formatDate(maxDate);
+
+                document.getElementById('uploadSection').classList.add('hidden');
+                document.getElementById('analysisSection').classList.remove('hidden');
+                document.getElementById('statusText').textContent = `${rawData.length} observations loaded`;
+                document.getElementById('exportButtons').style.display = 'flex';
+
+                initCharts();
+                updateAnalysis();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function handlePerfWindowChange() {
+            const val = parseInt(document.getElementById('perfWindow').value);
+            const months = Math.round(val / 21);
+            document.getElementById('perfWindowValue').textContent = `${months}M (${val} days)`;
+            updateAnalysis();
+        }
+
+        function handleWeightChange() {
+            const spxW = parseInt(document.getElementById('spxWeight').value);
+            document.getElementById('spxWeightValue').textContent = `${spxW}%`;
+            document.getElementById('ndxWeightValue').textContent = `${100 - spxW}%`;
+            updateAnalysis();
+        }
+
+        function setQuickPeriod(period) {
+            const endDate = rawData[rawData.length - 1].date;
+            let startDate = new Date(endDate);
+            
+            document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            switch(period) {
+                case '3m': startDate.setMonth(startDate.getMonth() - 3); break;
+                case '6m': startDate.setMonth(startDate.getMonth() - 6); break;
+                case '1y': startDate.setFullYear(startDate.getFullYear() - 1); break;
+                case '3y': startDate.setFullYear(startDate.getFullYear() - 3); break;
+                case '5y': startDate.setFullYear(startDate.getFullYear() - 5); break;
+                case 'ytd': startDate = new Date(endDate.getFullYear(), 0, 1); break;
+                case 'all': startDate = rawData[0].date; break;
+            }
+
+            const minDate = rawData[0].date;
+            if (startDate < minDate) startDate = minDate;
+
+            document.getElementById('startDate').value = formatDate(startDate);
+            document.getElementById('endDate').value = formatDate(endDate);
+            updateAnalysis();
+        }
+
+        function initCharts() {
+            // Relative performance chart
+            const relCtx = document.getElementById('relativeChart').getContext('2d');
+            charts.relative = new Chart(relCtx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1a2332',
+                            borderColor: '#21262d',
+                            borderWidth: 1,
+                            titleFont: { family: "'JetBrains Mono', monospace" },
+                            bodyFont: { family: "'JetBrains Mono', monospace" },
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'month' },
+                            grid: { color: '#161b22' }
+                        },
+                        y: {
+                            grid: { color: '#161b22' },
+                            ticks: { callback: v => v.toFixed(0) + '%' }
+                        }
+                    }
+                }
+            });
+
+            // Level chart
+            const levelCtx = document.getElementById('levelChart').getContext('2d');
+            charts.level = new Chart(levelCtx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 15 }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'month' },
+                            grid: { color: '#161b22' }
+                        },
+                        y: {
+                            grid: { color: '#161b22' }
+                        }
+                    }
+                }
+            });
+
+            // Scatter chart
+            const scatterCtx = document.getElementById('scatterChart').getContext('2d');
+            charts.scatter = new Chart(scatterCtx, {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1a2332',
+                            callbacks: {
+                                label: ctx => `Equity: ${ctx.parsed.x.toFixed(2)}%, CB: ${ctx.parsed.y.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Equity Basis (%)' },
+                            grid: { color: '#161b22' }
+                        },
+                        y: {
+                            title: { display: true, text: 'CB Relative (%)' },
+                            grid: { color: '#161b22' }
+                        }
+                    }
+                }
+            });
+
+            // Cumulative chart
+            const cumCtx = document.getElementById('cumulativeChart').getContext('2d');
+            charts.cumulative = new Chart(cumCtx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        annotation: {
+                            annotations: {
+                                zeroLine: {
+                                    type: 'line',
+                                    yMin: 0, yMax: 0,
+                                    borderColor: '#484f58',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5]
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'month' },
+                            grid: { color: '#161b22' }
+                        },
+                        y: {
+                            grid: { color: '#161b22' },
+                            ticks: { callback: v => v.toFixed(0) + '%' }
+                        }
+                    }
+                }
+            });
+
+            // Ranking percentile chart
+            const rankCtx = document.getElementById('rankingChart').getContext('2d');
+            charts.ranking = new Chart(rankCtx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 15 }
+                        },
+                        annotation: {
+                            annotations: {
+                                line50: {
+                                    type: 'line',
+                                    yMin: 50, yMax: 50,
+                                    borderColor: '#484f58',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        display: true,
+                                        content: 'Median',
+                                        position: 'end'
+                                    }
+                                },
+                                richZone: {
+                                    type: 'box',
+                                    yMin: 80, yMax: 100,
+                                    backgroundColor: 'rgba(255, 51, 102, 0.1)',
+                                    borderWidth: 0
+                                },
+                                cheapZone: {
+                                    type: 'box',
+                                    yMin: 0, yMax: 20,
+                                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                                    borderWidth: 0
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'month' },
+                            grid: { color: '#161b22' }
+                        },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: { color: '#161b22' },
+                            ticks: { callback: v => v + '%' }
+                        }
+                    }
+                }
+            });
+
+            // Z-Score chart
+            const zCtx = document.getElementById('zscoreChart').getContext('2d');
+            charts.zscore = new Chart(zCtx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 15 }
+                        },
+                        annotation: {
+                            annotations: {
+                                zeroLine: {
+                                    type: 'line',
+                                    yMin: 0, yMax: 0,
+                                    borderColor: '#484f58',
+                                    borderWidth: 1
+                                },
+                                plus2: {
+                                    type: 'line',
+                                    yMin: 2, yMax: 2,
+                                    borderColor: '#ff3366',
+                                    borderWidth: 1,
+                                    borderDash: [3, 3]
+                                },
+                                minus2: {
+                                    type: 'line',
+                                    yMin: -2, yMax: -2,
+                                    borderColor: '#00ff88',
+                                    borderWidth: 1,
+                                    borderDash: [3, 3]
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'month' },
+                            grid: { color: '#161b22' }
+                        },
+                        y: {
+                            grid: { color: '#161b22' },
+                            ticks: { callback: v => v.toFixed(1) + 'σ' }
+                        }
+                    }
+                }
+            });
+
+            // Histogram chart
+            const histCtx = document.getElementById('histogramChart').getContext('2d');
+            charts.histogram = new Chart(histCtx, {
+                type: 'bar',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#161b22' },
+                            title: { display: true, text: 'Performance Relative (%)' }
+                        },
+                        y: {
+                            grid: { color: '#161b22' },
+                            title: { display: true, text: 'Frequency' }
+                        }
+                    }
+                }
+            });
+
+            // Distribution chart with density
+            const distCtx = document.getElementById('distributionChart').getContext('2d');
+            charts.distribution = new Chart(distCtx, {
+                type: 'bar',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'top',
+                            labels: { boxWidth: 12, padding: 10 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} observations`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#161b22' },
+                            title: { display: true, text: 'Rolling Return (%)' }
+                        },
+                        y: {
+                            grid: { color: '#161b22' },
+                            title: { display: true, text: 'Count' }
+                        }
+                    }
+                }
+            });
+
+            // Options strategy chart
+            const optCtx = document.getElementById('optionsChart').getContext('2d');
+            charts.options = new Chart(optCtx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'month' },
+                            grid: { color: '#161b22' }
+                        },
+                        y: {
+                            grid: { color: '#161b22' },
+                            title: { display: true, text: 'Performance (rebased 100)' }
+                        }
+                    }
+                }
+            });
+
+            // Payoff chart
+            const payoffCtx = document.getElementById('payoffChart').getContext('2d');
+            charts.payoff = new Chart(payoffCtx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 10 }
+                        },
+                        annotation: {
+                            annotations: {
+                                zeroLine: {
+                                    type: 'line',
+                                    yMin: 0, yMax: 0,
+                                    borderColor: '#484f58',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5]
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#161b22' },
+                            title: { display: true, text: 'Underlying Move (%)' }
+                        },
+                        y: {
+                            grid: { color: '#161b22' },
+                            title: { display: true, text: 'P&L (%)' }
+                        }
+                    }
+                }
+            });
+
+            // Delta chart
+            const deltaCtx = document.getElementById('deltaChart').getContext('2d');
+            charts.delta = new Chart(deltaCtx, {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        annotation: {
+                            annotations: {
+                                one: {
+                                    type: 'line',
+                                    yMin: 1, yMax: 1,
+                                    borderColor: '#484f58',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5]
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'month' },
+                            grid: { color: '#161b22' }
+                        },
+                        y: {
+                            min: 0,
+                            max: 1.2,
+                            grid: { color: '#161b22' },
+                            title: { display: true, text: 'Delta' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateAnalysis() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            const perfWindow = parseInt(document.getElementById('perfWindow').value);
+            const spxWeight = parseInt(document.getElementById('spxWeight').value) / 100;
+            const ndxWeight = 1 - spxWeight;
+
+            // Filter data
+            const filtered = rawData.filter(d => d.date >= startDate && d.date <= endDate);
+            if (filtered.length < perfWindow + 10) {
+                console.log('Not enough data');
+                return;
+            }
+
+            // Calculate composite
+            const withComposite = filtered.map(d => ({
+                ...d,
+                composite: d.spx * spxWeight + d.ndx * ndxWeight
+            }));
+
+            // Calculate rolling returns
+            const withReturns = [];
+            for (let i = perfWindow; i < withComposite.length; i++) {
+                const curr = withComposite[i];
+                const prev = withComposite[i - perfWindow];
+                
+                const compositeReturn = (curr.composite / prev.composite - 1) * 100;
+                const parityReturn = (curr.ftseUSParity / prev.ftseUSParity - 1) * 100;
+                const equityBasis = compositeReturn - parityReturn;
+
+                let cbRelative = null;
+                if (curr.bgcbEUR && prev.bgcbEUR && curr.ftseGlobalFocus && prev.ftseGlobalFocus) {
+                    const bgcbReturn = (curr.bgcbEUR / prev.bgcbEUR - 1) * 100;
+                    const globalFocusReturn = (curr.ftseGlobalFocus / prev.ftseGlobalFocus - 1) * 100;
+                    cbRelative = bgcbReturn - globalFocusReturn;
+                }
+
+                withReturns.push({
+                    date: curr.date,
+                    compositeReturn,
+                    parityReturn,
+                    equityBasis,
+                    cbRelative,
+                    ...curr
+                });
+            }
+
+            // Store data for export
+            exportData.rawData = withComposite;
+            exportData.processedData = withReturns;
+            exportData.stats.startDate = startDate.toISOString().split('T')[0];
+            exportData.stats.endDate = endDate.toISOString().split('T')[0];
+            exportData.stats.perfWindow = perfWindow;
+            exportData.stats.spxWeight = Math.round(spxWeight * 100);
+            exportData.stats.ndxWeight = Math.round(ndxWeight * 100);
+
+            // Update charts
+            updateRelativeChart(withReturns);
+            updateLevelChart(withComposite);
+            updateScatterChart(withReturns);
+            updateCumulativeChart(withReturns);
+            updateStats(withReturns, withComposite, perfWindow);
+            updateCorrelationMatrix(withReturns);
+            updateRankingCharts(withReturns);
+            updateOutperformanceStats(withReturns);
+            
+            // Update options strategy
+            handleOptionsChange();
+        }
+
+        function updateRelativeChart(data) {
+            const validData = data.filter(d => d.cbRelative !== null);
+            
+            charts.relative.data = {
+                datasets: [
+                    {
+                        label: 'Equity Basis (Composite - Parity)',
+                        data: data.map(d => ({ x: d.date, y: d.equityBasis })),
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'CB Relative (BGCB - Global Focus)',
+                        data: validData.map(d => ({ x: d.date, y: d.cbRelative })),
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.1
+                    }
+                ]
+            };
+            charts.relative.update();
+        }
+
+        function updateLevelChart(data) {
+            const base = data[0];
+            
+            charts.level.data = {
+                datasets: [
+                    {
+                        label: `Composite (${100-parseInt(document.getElementById('spxWeight').value)}% NDX / ${document.getElementById('spxWeight').value}% SPX)`,
+                        data: data.map(d => ({ x: d.date, y: d.composite / base.composite * 100 })),
+                        borderColor: '#00ff88',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'FTSE US Parity',
+                        data: data.map(d => ({ x: d.date, y: d.ftseUSParity / base.ftseUSParity * 100 })),
+                        borderColor: '#00b4ff',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'BGCB EUR',
+                        data: data.filter(d => d.bgcbEUR).map(d => ({ x: d.date, y: d.bgcbEUR / data.find(x => x.bgcbEUR).bgcbEUR * 100 })),
+                        borderColor: '#a855f7',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'FTSE Global Focus',
+                        data: data.filter(d => d.ftseGlobalFocus).map(d => ({ x: d.date, y: d.ftseGlobalFocus / data.find(x => x.ftseGlobalFocus).ftseGlobalFocus * 100 })),
+                        borderColor: '#ff9500',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    }
+                ]
+            };
+            charts.level.update();
+        }
+
+        function updateScatterChart(data) {
+            const validData = data.filter(d => d.cbRelative !== null);
+            
+            // Calculate regression
+            const x = validData.map(d => d.equityBasis);
+            const y = validData.map(d => d.cbRelative);
+            const regression = linearRegression(x, y);
+
+            const minX = Math.min(...x);
+            const maxX = Math.max(...x);
+
+            charts.scatter.data = {
+                datasets: [
+                    {
+                        label: 'Data Points',
+                        data: validData.map(d => ({ x: d.equityBasis, y: d.cbRelative })),
+                        backgroundColor: 'rgba(0, 180, 255, 0.5)',
+                        borderColor: '#00b4ff',
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Regression Line',
+                        data: [
+                            { x: minX, y: regression.slope * minX + regression.intercept },
+                            { x: maxX, y: regression.slope * maxX + regression.intercept }
+                        ],
+                        type: 'line',
+                        borderColor: '#ff3366',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        borderDash: [5, 5]
+                    }
+                ]
+            };
+            charts.scatter.update();
+        }
+
+        function updateCumulativeChart(data) {
+            let cumEquity = 0;
+            let cumCB = 0;
+            const cumData = [];
+
+            for (const d of data) {
+                if (d.cbRelative !== null) {
+                    // Daily contribution (roughly divided by window)
+                    cumEquity += d.equityBasis / 100;
+                    cumCB += d.cbRelative / 100;
+                    cumData.push({
+                        date: d.date,
+                        cumEquity: cumEquity * 100,
+                        cumCB: cumCB * 100
+                    });
+                }
+            }
+
+            charts.cumulative.data = {
+                datasets: [
+                    {
+                        label: 'Cumulative Equity Basis',
+                        data: cumData.map(d => ({ x: d.date, y: d.cumEquity })),
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true
+                    },
+                    {
+                        label: 'Cumulative CB Relative',
+                        data: cumData.map(d => ({ x: d.date, y: d.cumCB })),
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true
+                    }
+                ]
+            };
+            charts.cumulative.update();
+        }
+
+        function updateStats(returnsData, levelData, perfWindow) {
+            const validData = returnsData.filter(d => d.cbRelative !== null);
+            
+            // Period performance
+            const first = levelData[0];
+            const last = levelData[levelData.length - 1];
+            
+            const compositePerf = (last.composite / first.composite - 1) * 100;
+            const parityPerf = (last.ftseUSParity / first.ftseUSParity - 1) * 100;
+            const equityBasis = compositePerf - parityPerf;
+
+            document.getElementById('compositePerf').textContent = compositePerf.toFixed(2) + '%';
+            document.getElementById('compositePerf').className = 'metric-value ' + (compositePerf >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById('parityPerf').textContent = parityPerf.toFixed(2) + '%';
+            document.getElementById('parityPerf').className = 'metric-value ' + (parityPerf >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById('equityBasis').textContent = (equityBasis >= 0 ? '+' : '') + equityBasis.toFixed(2) + '%';
+            document.getElementById('equityBasis').className = 'metric-value ' + (equityBasis >= 0 ? 'positive' : 'negative');
+
+            // Store for export
+            exportData.stats.compositePerf = compositePerf.toFixed(4);
+            exportData.stats.parityPerf = parityPerf.toFixed(4);
+            exportData.stats.equityBasis = equityBasis.toFixed(4);
+
+            // CB relative
+            const bgcbFirst = levelData.find(d => d.bgcbEUR);
+            const bgcbLast = [...levelData].reverse().find(d => d.bgcbEUR);
+            const gfFirst = levelData.find(d => d.ftseGlobalFocus);
+            const gfLast = [...levelData].reverse().find(d => d.ftseGlobalFocus);
+
+            if (bgcbFirst && bgcbLast && gfFirst && gfLast) {
+                const bgcbPerf = (bgcbLast.bgcbEUR / bgcbFirst.bgcbEUR - 1) * 100;
+                const gfPerf = (gfLast.ftseGlobalFocus / gfFirst.ftseGlobalFocus - 1) * 100;
+                const cbRel = bgcbPerf - gfPerf;
+                
+                document.getElementById('cbRelative').textContent = (cbRel >= 0 ? '+' : '') + cbRel.toFixed(2) + '%';
+                document.getElementById('cbRelative').className = 'metric-value ' + (cbRel >= 0 ? 'positive' : 'negative');
+                
+                exportData.stats.cbRelative = cbRel.toFixed(4);
+            }
+
+            // Correlation
+            if (validData.length > 10) {
+                const x = validData.map(d => d.equityBasis);
+                const y = validData.map(d => d.cbRelative);
+                const corr = correlation(x, y);
+                const r2 = corr * corr;
+
+                document.getElementById('correlation').textContent = corr.toFixed(3);
+                document.getElementById('correlation').className = 'metric-value ' + (Math.abs(corr) > 0.5 ? 'positive' : 'neutral');
+                
+                document.getElementById('rSquared').textContent = (r2 * 100).toFixed(1) + '%';
+                
+                exportData.stats.correlation = corr.toFixed(4);
+                exportData.stats.rSquared = (r2 * 100).toFixed(2);
+            }
+        }
+
+        function updateCorrelationMatrix(data) {
+            const validData = data.filter(d => d.cbRelative !== null);
+            if (validData.length < 10) return;
+
+            const series = {
+                'Composite': validData.map(d => d.compositeReturn),
+                'Parity': validData.map(d => d.parityReturn),
+                'Equity Basis': validData.map(d => d.equityBasis),
+                'CB Relative': validData.map(d => d.cbRelative)
+            };
+
+            const names = Object.keys(series);
+            let html = '<div class="matrix-cell header"></div>';
+            
+            for (const name of names) {
+                html += `<div class="matrix-cell header">${name}</div>`;
+            }
+
+            for (const row of names) {
+                html += `<div class="matrix-cell header">${row}</div>`;
+                for (const col of names) {
+                    const corr = correlation(series[row], series[col]);
+                    let colorClass = 'low';
+                    if (corr > 0.7) colorClass = 'high-positive';
+                    else if (corr > 0.3) colorClass = 'medium-positive';
+                    else if (corr < -0.7) colorClass = 'high-negative';
+                    else if (corr < -0.3) colorClass = 'medium-negative';
+                    
+                    html += `<div class="matrix-cell ${colorClass}">${corr.toFixed(2)}</div>`;
+                }
+            }
+
+            document.getElementById('correlationMatrix').innerHTML = html;
+        }
+
+        function updateOutperformanceStats(data) {
+            const validData = data.filter(d => d.cbRelative !== null);
+            if (validData.length < 30) return;
+
+            const eqValues = validData.map(d => d.equityBasis);
+            const cbValues = validData.map(d => d.cbRelative);
+
+            // Calculate statistics for Equity Basis
+            const eqStats = calculateDistributionStats(eqValues);
+            const cbStats = calculateDistributionStats(cbValues);
+
+            // Update Equity Basis display
+            document.getElementById('eqHitRatio').textContent = eqStats.hitRatio.toFixed(1) + '%';
+            document.getElementById('eqHitRatio').className = 'main-stat-value ' + (eqStats.hitRatio > 50 ? 'positive' : 'negative');
+            
+            document.getElementById('eqAvgOutperf').textContent = '+' + eqStats.avgPositive.toFixed(2) + '%';
+            document.getElementById('eqAvgOutperf').className = 'main-stat-value positive';
+            
+            document.getElementById('eqAvgUnderperf').textContent = eqStats.avgNegative.toFixed(2) + '%';
+            document.getElementById('eqAvgUnderperf').className = 'main-stat-value negative';
+
+            // Update Equity distribution row
+            const eqDistRow = document.getElementById('eqDistRow');
+            eqDistRow.innerHTML = `
+                <span>Value</span>
+                <span style="color: ${eqStats.p5 >= 0 ? '#00ff88' : '#ff3366'}">${eqStats.p5.toFixed(2)}%</span>
+                <span style="color: ${eqStats.p25 >= 0 ? '#00ff88' : '#ff3366'}">${eqStats.p25.toFixed(2)}%</span>
+                <span style="color: ${eqStats.median >= 0 ? '#00ff88' : '#ff3366'}">${eqStats.median.toFixed(2)}%</span>
+                <span style="color: ${eqStats.p75 >= 0 ? '#00ff88' : '#ff3366'}">${eqStats.p75.toFixed(2)}%</span>
+                <span style="color: ${eqStats.p95 >= 0 ? '#00ff88' : '#ff3366'}">${eqStats.p95.toFixed(2)}%</span>
+            `;
+
+            document.getElementById('eqMean').textContent = (eqStats.mean >= 0 ? '+' : '') + eqStats.mean.toFixed(2) + '%';
+            document.getElementById('eqStd').textContent = eqStats.std.toFixed(2) + '%';
+            document.getElementById('eqSkew').textContent = eqStats.skewness.toFixed(2);
+            document.getElementById('eqSharpe').textContent = eqStats.sharpe.toFixed(2);
+
+            // Update CB Relative display
+            document.getElementById('cbHitRatio').textContent = cbStats.hitRatio.toFixed(1) + '%';
+            document.getElementById('cbHitRatio').className = 'main-stat-value ' + (cbStats.hitRatio > 50 ? 'positive' : 'negative');
+            
+            document.getElementById('cbAvgOutperf').textContent = '+' + cbStats.avgPositive.toFixed(2) + '%';
+            document.getElementById('cbAvgOutperf').className = 'main-stat-value positive';
+            
+            document.getElementById('cbAvgUnderperf').textContent = cbStats.avgNegative.toFixed(2) + '%';
+            document.getElementById('cbAvgUnderperf').className = 'main-stat-value negative';
+
+            // Update CB distribution row
+            const cbDistRow = document.getElementById('cbDistRow');
+            cbDistRow.innerHTML = `
+                <span>Value</span>
+                <span style="color: ${cbStats.p5 >= 0 ? '#a855f7' : '#ff3366'}">${cbStats.p5.toFixed(2)}%</span>
+                <span style="color: ${cbStats.p25 >= 0 ? '#a855f7' : '#ff3366'}">${cbStats.p25.toFixed(2)}%</span>
+                <span style="color: ${cbStats.median >= 0 ? '#a855f7' : '#ff3366'}">${cbStats.median.toFixed(2)}%</span>
+                <span style="color: ${cbStats.p75 >= 0 ? '#a855f7' : '#ff3366'}">${cbStats.p75.toFixed(2)}%</span>
+                <span style="color: ${cbStats.p95 >= 0 ? '#a855f7' : '#ff3366'}">${cbStats.p95.toFixed(2)}%</span>
+            `;
+
+            document.getElementById('cbMean').textContent = (cbStats.mean >= 0 ? '+' : '') + cbStats.mean.toFixed(2) + '%';
+            document.getElementById('cbStd').textContent = cbStats.std.toFixed(2) + '%';
+            document.getElementById('cbSkew').textContent = cbStats.skewness.toFixed(2);
+            document.getElementById('cbSharpe').textContent = cbStats.sharpe.toFixed(2);
+
+            // Calculate joint probabilities
+            let bothPos = 0, bothNeg = 0, eqOnlyPos = 0, cbOnlyPos = 0;
+            for (const d of validData) {
+                const eqPos = d.equityBasis > 0;
+                const cbPos = d.cbRelative > 0;
+                if (eqPos && cbPos) bothPos++;
+                else if (!eqPos && !cbPos) bothNeg++;
+                else if (eqPos && !cbPos) eqOnlyPos++;
+                else cbOnlyPos++;
+            }
+            const n = validData.length;
+            
+            document.getElementById('probBothPos').textContent = (bothPos / n * 100).toFixed(1) + '%';
+            document.getElementById('probBothNeg').textContent = (bothNeg / n * 100).toFixed(1) + '%';
+            document.getElementById('probEqOnly').textContent = (eqOnlyPos / n * 100).toFixed(1) + '%';
+            document.getElementById('probCbOnly').textContent = (cbOnlyPos / n * 100).toFixed(1) + '%';
+
+            // Conditional expectations
+            const cbWhenEqPos = validData.filter(d => d.equityBasis > 0).map(d => d.cbRelative);
+            const cbWhenEqNeg = validData.filter(d => d.equityBasis <= 0).map(d => d.cbRelative);
+            
+            const expCbEqPos = cbWhenEqPos.length > 0 ? mean(cbWhenEqPos) : 0;
+            const expCbEqNeg = cbWhenEqNeg.length > 0 ? mean(cbWhenEqNeg) : 0;
+
+            document.getElementById('expCbGivenEqPos').textContent = (expCbEqPos >= 0 ? '+' : '') + expCbEqPos.toFixed(2) + '%';
+            document.getElementById('expCbGivenEqPos').className = 'cond-value ' + (expCbEqPos >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById('expCbGivenEqNeg').textContent = (expCbEqNeg >= 0 ? '+' : '') + expCbEqNeg.toFixed(2) + '%';
+            document.getElementById('expCbGivenEqNeg').className = 'cond-value ' + (expCbEqNeg >= 0 ? 'positive' : 'negative');
+
+            // Update distribution chart
+            updateDistributionChart(eqValues, cbValues);
+
+            // Store stats for export
+            exportData.stats.eqHitRatio = eqStats.hitRatio.toFixed(2);
+            exportData.stats.eqMean = eqStats.mean.toFixed(4);
+            exportData.stats.eqStd = eqStats.std.toFixed(4);
+            exportData.stats.eqMedian = eqStats.median.toFixed(4);
+            exportData.stats.cbHitRatio = cbStats.hitRatio.toFixed(2);
+            exportData.stats.cbMean = cbStats.mean.toFixed(4);
+            exportData.stats.cbStd = cbStats.std.toFixed(4);
+            exportData.stats.cbMedian = cbStats.median.toFixed(4);
+            exportData.stats.probBothOutperf = (bothPos / n * 100).toFixed(2);
+            exportData.stats.expCbGivenEqPos = expCbEqPos.toFixed(4);
+            exportData.stats.expCbGivenEqNeg = expCbEqNeg.toFixed(4);
+        }
+
+        function calculateDistributionStats(arr) {
+            const sorted = [...arr].sort((a, b) => a - b);
+            const n = sorted.length;
+            
+            const m = mean(arr);
+            const s = stdDev(arr);
+            
+            // Percentiles
+            const p5 = sorted[Math.floor(n * 0.05)];
+            const p25 = sorted[Math.floor(n * 0.25)];
+            const median = sorted[Math.floor(n * 0.5)];
+            const p75 = sorted[Math.floor(n * 0.75)];
+            const p95 = sorted[Math.floor(n * 0.95)];
+            
+            // Hit ratio
+            const positive = arr.filter(x => x > 0);
+            const negative = arr.filter(x => x <= 0);
+            const hitRatio = (positive.length / n) * 100;
+            
+            // Average positive and negative
+            const avgPositive = positive.length > 0 ? mean(positive) : 0;
+            const avgNegative = negative.length > 0 ? mean(negative) : 0;
+            
+            // Skewness
+            const skewness = arr.reduce((acc, val) => acc + Math.pow((val - m) / s, 3), 0) / n;
+            
+            // Sharpe (mean / std)
+            const sharpe = s > 0 ? m / s : 0;
+            
+            return {
+                mean: m,
+                std: s,
+                p5, p25, median, p75, p95,
+                hitRatio,
+                avgPositive,
+                avgNegative,
+                skewness,
+                sharpe
+            };
+        }
+
+        function updateDistributionChart(eqValues, cbValues) {
+            const allValues = [...eqValues, ...cbValues];
+            const min = Math.min(...allValues);
+            const max = Math.max(...allValues);
+            const bins = 25;
+            const binWidth = (max - min) / bins;
+            
+            const eqHist = Array(bins).fill(0);
+            const cbHist = Array(bins).fill(0);
+            const labels = [];
+            
+            for (let i = 0; i < bins; i++) {
+                const center = min + (i + 0.5) * binWidth;
+                labels.push(center.toFixed(1));
+            }
+            
+            for (const val of eqValues) {
+                const idx = Math.min(Math.floor((val - min) / binWidth), bins - 1);
+                eqHist[idx]++;
+            }
+            for (const val of cbValues) {
+                const idx = Math.min(Math.floor((val - min) / binWidth), bins - 1);
+                cbHist[idx]++;
+            }
+
+            // Find zero bin for annotation
+            const zeroBin = Math.floor((0 - min) / binWidth);
+
+            charts.distribution.data = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Equity Basis',
+                        data: eqHist,
+                        backgroundColor: 'rgba(0, 255, 136, 0.5)',
+                        borderColor: '#00ff88',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'CB Relative',
+                        data: cbHist,
+                        backgroundColor: 'rgba(168, 85, 247, 0.5)',
+                        borderColor: '#a855f7',
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            // Add zero line annotation
+            charts.distribution.options.plugins.annotation = {
+                annotations: {
+                    zeroLine: {
+                        type: 'line',
+                        xMin: zeroBin,
+                        xMax: zeroBin,
+                        borderColor: '#ff3366',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        label: {
+                            display: true,
+                            content: '0%',
+                            position: 'start',
+                            backgroundColor: '#ff3366'
+                        }
+                    }
+                }
+            };
+
+            charts.distribution.update();
+        }
+
+        // Statistical helpers
+        function mean(arr) {
+            return arr.reduce((a, b) => a + b, 0) / arr.length;
+        }
+
+        function stdDev(arr) {
+            const m = mean(arr);
+            return Math.sqrt(arr.reduce((acc, val) => acc + Math.pow(val - m, 2), 0) / arr.length);
+        }
+
+        function percentileRank(arr, value) {
+            const sorted = [...arr].sort((a, b) => a - b);
+            let count = 0;
+            for (const v of sorted) {
+                if (v < value) count++;
+            }
+            return (count / sorted.length) * 100;
+        }
+
+        function rollingPercentile(data, field, lookback = null) {
+            const result = [];
+            for (let i = 0; i < data.length; i++) {
+                const start = lookback ? Math.max(0, i - lookback) : 0;
+                const window = data.slice(start, i + 1).map(d => d[field]).filter(v => v !== null);
+                if (window.length > 10) {
+                    const pctl = percentileRank(window, data[i][field]);
+                    result.push({ date: data[i].date, percentile: pctl, value: data[i][field] });
+                }
+            }
+            return result;
+        }
+
+        function rollingZScore(data, field, lookback = 252) {
+            const result = [];
+            for (let i = lookback; i < data.length; i++) {
+                const window = data.slice(i - lookback, i).map(d => d[field]).filter(v => v !== null);
+                if (window.length > 20) {
+                    const m = mean(window);
+                    const s = stdDev(window);
+                    const z = s > 0 ? (data[i][field] - m) / s : 0;
+                    result.push({ date: data[i].date, zscore: z, value: data[i][field] });
+                }
+            }
+            return result;
+        }
+
+        function createHistogram(arr, bins = 30) {
+            const min = Math.min(...arr);
+            const max = Math.max(...arr);
+            const binWidth = (max - min) / bins;
+            const histogram = Array(bins).fill(0);
+            const labels = [];
+            
+            for (let i = 0; i < bins; i++) {
+                labels.push((min + (i + 0.5) * binWidth).toFixed(1));
+            }
+            
+            for (const val of arr) {
+                const idx = Math.min(Math.floor((val - min) / binWidth), bins - 1);
+                histogram[idx]++;
+            }
+            
+            return { histogram, labels, min, max, binWidth };
+        }
+
+        function updateRankingCharts(data) {
+            const validData = data.filter(d => d.cbRelative !== null);
+            if (validData.length < 50) return;
+
+            // Calculate rolling percentiles (expanding window for full history context)
+            const equityPctls = rollingPercentile(validData, 'equityBasis');
+            const cbPctls = rollingPercentile(validData, 'cbRelative');
+
+            // Calculate rolling z-scores (1-year lookback)
+            const equityZ = rollingZScore(validData, 'equityBasis', 252);
+            const cbZ = rollingZScore(validData, 'cbRelative', 252);
+
+            // Update percentile ranking chart
+            charts.ranking.data = {
+                datasets: [
+                    {
+                        label: 'Equity Basis Percentile',
+                        data: equityPctls.map(d => ({ x: d.date, y: d.percentile })),
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'CB Relative Percentile',
+                        data: cbPctls.map(d => ({ x: d.date, y: d.percentile })),
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.1
+                    }
+                ]
+            };
+            charts.ranking.update();
+
+            // Update z-score chart
+            const minLen = Math.min(equityZ.length, cbZ.length);
+            charts.zscore.data = {
+                datasets: [
+                    {
+                        label: 'Equity Basis Z-Score',
+                        data: equityZ.slice(-minLen).map(d => ({ x: d.date, y: d.zscore })),
+                        borderColor: '#00ff88',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'CB Relative Z-Score',
+                        data: cbZ.slice(-minLen).map(d => ({ x: d.date, y: d.zscore })),
+                        borderColor: '#a855f7',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    }
+                ]
+            };
+            charts.zscore.update();
+
+            // Create histogram
+            const equityValues = validData.map(d => d.equityBasis);
+            const cbValues = validData.map(d => d.cbRelative);
+            
+            const allValues = [...equityValues, ...cbValues];
+            const histMin = Math.min(...allValues);
+            const histMax = Math.max(...allValues);
+            const bins = 40;
+            const binWidth = (histMax - histMin) / bins;
+            
+            const equityHist = Array(bins).fill(0);
+            const cbHist = Array(bins).fill(0);
+            const labels = [];
+            
+            for (let i = 0; i < bins; i++) {
+                labels.push((histMin + (i + 0.5) * binWidth).toFixed(1));
+            }
+            
+            for (const val of equityValues) {
+                const idx = Math.min(Math.floor((val - histMin) / binWidth), bins - 1);
+                equityHist[idx]++;
+            }
+            for (const val of cbValues) {
+                const idx = Math.min(Math.floor((val - histMin) / binWidth), bins - 1);
+                cbHist[idx]++;
+            }
+
+            // Current values for markers
+            const currentEquity = equityValues[equityValues.length - 1];
+            const currentCB = cbValues[cbValues.length - 1];
+            const currentEquityBin = Math.min(Math.floor((currentEquity - histMin) / binWidth), bins - 1);
+            const currentCBBin = Math.min(Math.floor((currentCB - histMin) / binWidth), bins - 1);
+
+            // Add marker data
+            const equityMarker = Array(bins).fill(null);
+            const cbMarker = Array(bins).fill(null);
+            equityMarker[currentEquityBin] = Math.max(...equityHist) * 1.1;
+            cbMarker[currentCBBin] = Math.max(...cbHist) * 1.1;
+
+            charts.histogram.data = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Equity Basis',
+                        data: equityHist,
+                        backgroundColor: 'rgba(0, 255, 136, 0.4)',
+                        borderColor: '#00ff88',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'CB Relative',
+                        data: cbHist,
+                        backgroundColor: 'rgba(168, 85, 247, 0.4)',
+                        borderColor: '#a855f7',
+                        borderWidth: 1
+                    }
+                ]
+            };
+            charts.histogram.update();
+
+            // Update current percentile displays
+            const currentEquityPctl = equityPctls.length > 0 ? equityPctls[equityPctls.length - 1].percentile : 50;
+            const currentCBPctl = cbPctls.length > 0 ? cbPctls[cbPctls.length - 1].percentile : 50;
+            const currentEquityZScore = equityZ.length > 0 ? equityZ[equityZ.length - 1].zscore : 0;
+            const currentCBZScore = cbZ.length > 0 ? cbZ[cbZ.length - 1].zscore : 0;
+
+            document.getElementById('equityPctl').textContent = currentEquityPctl.toFixed(0) + '%';
+            document.getElementById('cbPctl').textContent = currentCBPctl.toFixed(0) + '%';
+            document.getElementById('equityZ').textContent = (currentEquityZScore >= 0 ? '+' : '') + currentEquityZScore.toFixed(2) + 'σ';
+            document.getElementById('cbZ').textContent = (currentCBZScore >= 0 ? '+' : '') + currentCBZScore.toFixed(2) + 'σ';
+
+            // Color coding for z-scores
+            document.getElementById('equityZ').className = 'metric-value ' + 
+                (currentEquityZScore > 1.5 ? 'negative' : currentEquityZScore < -1.5 ? 'positive' : 'neutral');
+            document.getElementById('cbZ').className = 'metric-value ' + 
+                (currentCBZScore > 1.5 ? 'negative' : currentCBZScore < -1.5 ? 'positive' : 'neutral');
+
+            // Store for export
+            exportData.stats.currentEquityPctl = currentEquityPctl.toFixed(2);
+            exportData.stats.currentCBPctl = currentCBPctl.toFixed(2);
+            exportData.stats.currentEquityZ = currentEquityZScore.toFixed(4);
+            exportData.stats.currentCBZ = currentCBZScore.toFixed(4);
+
+            // Add percentiles and z-scores to processed data for export
+            const pctlMap = new Map(equityPctls.map(d => [d.date.getTime(), d.percentile]));
+            const cbPctlMap = new Map(cbPctls.map(d => [d.date.getTime(), d.percentile]));
+            const eqZMap = new Map(equityZ.map(d => [d.date.getTime(), d.zscore]));
+            const cbZMap = new Map(cbZ.map(d => [d.date.getTime(), d.zscore]));
+            
+            exportData.processedData = exportData.processedData.map(d => ({
+                ...d,
+                equityPctl: pctlMap.get(d.date.getTime()),
+                cbPctl: cbPctlMap.get(d.date.getTime()),
+                equityZ: eqZMap.get(d.date.getTime()),
+                cbZ: cbZMap.get(d.date.getTime())
+            }));
+
+            // Update gauges
+            updateGauges(currentEquityPctl, currentCBPctl);
+        }
+
+        function updateGauges(equityPctl, cbPctl) {
+            const combinedPctl = (equityPctl + cbPctl) / 2;
+
+            // Update gauge fills (showing the "used up" portion)
+            document.getElementById('equityGauge').style.width = equityPctl + '%';
+            document.getElementById('cbGauge').style.width = cbPctl + '%';
+            document.getElementById('combinedGauge').style.width = combinedPctl + '%';
+
+            // Update markers
+            document.getElementById('equityMarker').style.left = equityPctl + '%';
+            document.getElementById('cbMarker').style.left = cbPctl + '%';
+            document.getElementById('combinedMarker').style.left = combinedPctl + '%';
+
+            // Generate signal interpretation
+            const signalDiv = document.getElementById('signalInterpretation');
+            let signalClass, signalIcon, signalTitle, signalBody;
+
+            if (combinedPctl < 25) {
+                signalClass = 'bullish';
+                signalIcon = '🟢';
+                signalTitle = 'BULLISH CB SIGNAL';
+                signalBody = `Both equity basis (${equityPctl.toFixed(0)}th percentile) and CB relative (${cbPctl.toFixed(0)}th percentile) are trading cheap vs history. ` +
+                    `This suggests convertibles may be underpriced relative to their equity sensitivity. Consider increasing CB exposure or tightening hedges.`;
+            } else if (combinedPctl > 75) {
+                signalClass = 'bearish';
+                signalIcon = '🔴';
+                signalTitle = 'BEARISH CB SIGNAL';
+                signalBody = `Both equity basis (${equityPctl.toFixed(0)}th percentile) and CB relative (${cbPctl.toFixed(0)}th percentile) are trading rich vs history. ` +
+                    `Convertibles appear expensive relative to their equity delta. Consider reducing CB exposure or widening hedges.`;
+            } else if (Math.abs(equityPctl - cbPctl) > 40) {
+                signalClass = 'neutral';
+                signalIcon = '🟡';
+                signalTitle = 'DIVERGENCE SIGNAL';
+                const richer = equityPctl > cbPctl ? 'Equity basis' : 'CB relative';
+                const cheaper = equityPctl > cbPctl ? 'CB relative' : 'Equity basis';
+                signalBody = `Significant divergence detected: ${richer} is trading rich (${Math.max(equityPctl, cbPctl).toFixed(0)}th pctl) while ${cheaper} is cheaper (${Math.min(equityPctl, cbPctl).toFixed(0)}th pctl). ` +
+                    `This may signal a relative value opportunity or an incoming regime shift.`;
+            } else {
+                signalClass = 'neutral';
+                signalIcon = '⚪';
+                signalTitle = 'NEUTRAL SIGNAL';
+                signalBody = `Both metrics are trading near fair value (equity: ${equityPctl.toFixed(0)}th pctl, CB: ${cbPctl.toFixed(0)}th pctl). ` +
+                    `No strong directional signal. Monitor for breakout from the neutral zone.`;
+            }
+
+            signalDiv.innerHTML = `
+                <div class="signal-title ${signalClass}">${signalIcon} ${signalTitle}</div>
+                <div class="signal-body">${signalBody}</div>
+            `;
+        }
+
+        function correlation(x, y) {
+            const n = x.length;
+            const mx = mean(x);
+            const my = mean(y);
+            
+            let num = 0, dx = 0, dy = 0;
+            for (let i = 0; i < n; i++) {
+                const xi = x[i] - mx;
+                const yi = y[i] - my;
+                num += xi * yi;
+                dx += xi * xi;
+                dy += yi * yi;
+            }
+            
+            return num / Math.sqrt(dx * dy);
+        }
+
+        function linearRegression(x, y) {
+            const n = x.length;
+            const mx = mean(x);
+            const my = mean(y);
+            
+            let num = 0, den = 0;
+            for (let i = 0; i < n; i++) {
+                num += (x[i] - mx) * (y[i] - my);
+                den += (x[i] - mx) ** 2;
+            }
+            
+            const slope = num / den;
+            const intercept = my - slope * mx;
+            
+            return { slope, intercept };
+        }
+
+        // Global storage for export
+        let exportData = {
+            rawData: [],
+            processedData: [],
+            stats: {}
+        };
+
+        // Toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Export single chart to JPEG
+        function exportChart(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const chart = charts[canvasId.replace('Chart', '')];
+            
+            // Create a temporary canvas with white background for better JPEG quality
+            const tempCanvas = document.createElement('canvas');
+            const ctx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width * 2;
+            tempCanvas.height = canvas.height * 2;
+            
+            // Fill with dark background
+            ctx.fillStyle = '#0a0e14';
+            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Draw the chart
+            ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Create download link
+            const link = document.createElement('a');
+            const date = new Date().toISOString().split('T')[0];
+            link.download = `${filename}_${date}.jpg`;
+            link.href = tempCanvas.toDataURL('image/jpeg', 0.95);
+            link.click();
+            
+            showToast(`Chart exported: ${filename}.jpg`);
+        }
+
+        // Export all charts
+        function exportAllCharts() {
+            const chartConfigs = [
+                { id: 'relativeChart', name: 'rolling_relative_performance' },
+                { id: 'levelChart', name: 'index_levels_rebased' },
+                { id: 'scatterChart', name: 'scatter_correlation' },
+                { id: 'cumulativeChart', name: 'cumulative_spread' },
+                { id: 'rankingChart', name: 'percentile_ranking' },
+                { id: 'zscoreChart', name: 'zscore_analysis' },
+                { id: 'histogramChart', name: 'distribution_histogram' },
+                { id: 'distributionChart', name: 'outperformance_distribution' },
+                { id: 'optionsChart', name: 'options_strategy_vs_equity' },
+                { id: 'payoffChart', name: 'options_payoff_profile' },
+                { id: 'deltaChart', name: 'rolling_delta_exposure' }
+            ];
+            
+            let delay = 0;
+            chartConfigs.forEach(config => {
+                setTimeout(() => exportChart(config.id, config.name), delay);
+                delay += 300;
+            });
+            
+            setTimeout(() => showToast('All charts exported!'), delay);
+        }
+
+        // Export data to Excel
+        function exportToExcel() {
+            if (exportData.processedData.length === 0) {
+                showToast('No data to export!');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+            
+            // Sheet 1: Raw Data
+            const rawSheet = exportData.rawData.map(d => ({
+                'Date': d.date.toISOString().split('T')[0],
+                'SPX': d.spx,
+                'NDX': d.ndx,
+                'Composite 40/60': d.composite,
+                'FTSE US Parity': d.ftseUSParity,
+                'BGCB EUR': d.bgcbEUR,
+                'FTSE Global Focus EUR': d.ftseGlobalFocus,
+                'FTSE Global Parity EUR': d.ftseGlobalParity
+            }));
+            const ws1 = XLSX.utils.json_to_sheet(rawSheet);
+            XLSX.utils.book_append_sheet(wb, ws1, 'Raw Data');
+            
+            // Sheet 2: Rolling Returns & Relative Performance
+            const returnsSheet = exportData.processedData.map(d => ({
+                'Date': d.date.toISOString().split('T')[0],
+                'Composite Return (%)': d.compositeReturn?.toFixed(4),
+                'Parity Return (%)': d.parityReturn?.toFixed(4),
+                'Equity Basis (%)': d.equityBasis?.toFixed(4),
+                'CB Relative (%)': d.cbRelative?.toFixed(4),
+                'Equity Percentile': d.equityPctl?.toFixed(2),
+                'CB Percentile': d.cbPctl?.toFixed(2),
+                'Equity Z-Score': d.equityZ?.toFixed(4),
+                'CB Z-Score': d.cbZ?.toFixed(4)
+            }));
+            const ws2 = XLSX.utils.json_to_sheet(returnsSheet);
+            XLSX.utils.book_append_sheet(wb, ws2, 'Rolling Performance');
+            
+            // Sheet 3: Summary Statistics
+            const statsSheet = [
+                { 'Metric': 'Analysis Period Start', 'Value': exportData.stats.startDate },
+                { 'Metric': 'Analysis Period End', 'Value': exportData.stats.endDate },
+                { 'Metric': 'Rolling Window (days)', 'Value': exportData.stats.perfWindow },
+                { 'Metric': 'SPX Weight', 'Value': exportData.stats.spxWeight + '%' },
+                { 'Metric': 'NDX Weight', 'Value': exportData.stats.ndxWeight + '%' },
+                { 'Metric': '', 'Value': '' },
+                { 'Metric': '=== PERIOD PERFORMANCE ===', 'Value': '' },
+                { 'Metric': 'Composite Performance (%)', 'Value': exportData.stats.compositePerf },
+                { 'Metric': 'Parity Performance (%)', 'Value': exportData.stats.parityPerf },
+                { 'Metric': 'Equity Basis (%)', 'Value': exportData.stats.equityBasis },
+                { 'Metric': 'CB Relative (%)', 'Value': exportData.stats.cbRelative },
+                { 'Metric': '', 'Value': '' },
+                { 'Metric': '=== CORRELATION ===', 'Value': '' },
+                { 'Metric': 'Correlation (Equity vs CB)', 'Value': exportData.stats.correlation },
+                { 'Metric': 'R-Squared (%)', 'Value': exportData.stats.rSquared },
+                { 'Metric': '', 'Value': '' },
+                { 'Metric': '=== CURRENT POSITIONING ===', 'Value': '' },
+                { 'Metric': 'Current Equity Percentile', 'Value': exportData.stats.currentEquityPctl },
+                { 'Metric': 'Current CB Percentile', 'Value': exportData.stats.currentCBPctl },
+                { 'Metric': 'Current Equity Z-Score', 'Value': exportData.stats.currentEquityZ },
+                { 'Metric': 'Current CB Z-Score', 'Value': exportData.stats.currentCBZ },
+                { 'Metric': '', 'Value': '' },
+                { 'Metric': '=== OUTPERFORMANCE ANALYSIS ===', 'Value': '' },
+                { 'Metric': 'Equity Basis Hit Ratio (%)', 'Value': exportData.stats.eqHitRatio },
+                { 'Metric': 'Equity Basis Mean (%)', 'Value': exportData.stats.eqMean },
+                { 'Metric': 'Equity Basis Std Dev (%)', 'Value': exportData.stats.eqStd },
+                { 'Metric': 'Equity Basis Median (%)', 'Value': exportData.stats.eqMedian },
+                { 'Metric': '', 'Value': '' },
+                { 'Metric': 'CB Relative Hit Ratio (%)', 'Value': exportData.stats.cbHitRatio },
+                { 'Metric': 'CB Relative Mean (%)', 'Value': exportData.stats.cbMean },
+                { 'Metric': 'CB Relative Std Dev (%)', 'Value': exportData.stats.cbStd },
+                { 'Metric': 'CB Relative Median (%)', 'Value': exportData.stats.cbMedian },
+                { 'Metric': '', 'Value': '' },
+                { 'Metric': '=== JOINT PROBABILITIES ===', 'Value': '' },
+                { 'Metric': 'P(Both Outperform) (%)', 'Value': exportData.stats.probBothOutperf },
+                { 'Metric': 'E[CB | Equity > 0] (%)', 'Value': exportData.stats.expCbGivenEqPos },
+                { 'Metric': 'E[CB | Equity < 0] (%)', 'Value': exportData.stats.expCbGivenEqNeg }
+            ];
+            const ws3 = XLSX.utils.json_to_sheet(statsSheet);
+            XLSX.utils.book_append_sheet(wb, ws3, 'Summary Stats');
+            
+            // Generate file
+            const date = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `relative_performance_analysis_${date}.xlsx`);
+            
+            showToast('Excel file exported successfully!');
+        }
+
+        // ==========================================
+        // OPTIONS STRATEGY FUNCTIONS
+        // ==========================================
+
+        function handleOptionsChange() {
+            // Update labels
+            const maturity = document.getElementById('optionMaturity').value;
+            const strike = document.getElementById('strikePercent').value;
+            const vol = document.getElementById('impliedVol').value;
+            const rate = document.getElementById('riskFreeRate').value;
+            const roll = document.getElementById('rollFrequency').value;
+            const leverage = document.getElementById('leverageRatio').value;
+
+            document.getElementById('maturityValue').textContent = `${maturity} months`;
+            document.getElementById('strikeValue').textContent = `${strike}% ${strike < 100 ? 'ITM' : strike > 100 ? 'OTM' : 'ATM'}`;
+            document.getElementById('volValue').textContent = `${vol}%`;
+            document.getElementById('rateValue').textContent = `${parseFloat(rate).toFixed(2)}%`;
+            document.getElementById('rollValue').textContent = `${roll} month${roll > 1 ? 's' : ''}`;
+            document.getElementById('leverageValue').textContent = `${parseFloat(leverage).toFixed(1)}x`;
+
+            // Update greeks and strategy
+            updateOptionsGreeks();
+            if (exportData.rawData.length > 0) {
+                updateOptionsStrategy();
+            }
+        }
+
+        // Normal CDF approximation (Abramowitz and Stegun)
+        function normalCDF(x) {
+            const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+            const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+            
+            const sign = x < 0 ? -1 : 1;
+            x = Math.abs(x) / Math.sqrt(2);
+            
+            const t = 1.0 / (1.0 + p * x);
+            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+            
+            return 0.5 * (1.0 + sign * y);
+        }
+
+        // Normal PDF
+        function normalPDF(x) {
+            return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+        }
+
+        // Black-Scholes d1 and d2
+        function bsD1(S, K, T, r, sigma) {
+            return (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+        }
+
+        function bsD2(d1, T, sigma) {
+            return d1 - sigma * Math.sqrt(T);
+        }
+
+        // Black-Scholes Call Price (as % of spot)
+        function bsCallPrice(S, K, T, r, sigma) {
+            if (T <= 0) return Math.max(0, S - K);
+            const d1 = bsD1(S, K, T, r, sigma);
+            const d2 = bsD2(d1, T, sigma);
+            return S * normalCDF(d1) - K * Math.exp(-r * T) * normalCDF(d2);
+        }
+
+        // Greeks
+        function bsDelta(S, K, T, r, sigma) {
+            if (T <= 0) return S > K ? 1 : 0;
+            const d1 = bsD1(S, K, T, r, sigma);
+            return normalCDF(d1);
+        }
+
+        function bsGamma(S, K, T, r, sigma) {
+            if (T <= 0) return 0;
+            const d1 = bsD1(S, K, T, r, sigma);
+            return normalPDF(d1) / (S * sigma * Math.sqrt(T));
+        }
+
+        function bsTheta(S, K, T, r, sigma) {
+            if (T <= 0) return 0;
+            const d1 = bsD1(S, K, T, r, sigma);
+            const d2 = bsD2(d1, T, sigma);
+            const term1 = -(S * normalPDF(d1) * sigma) / (2 * Math.sqrt(T));
+            const term2 = -r * K * Math.exp(-r * T) * normalCDF(d2);
+            return (term1 + term2) / 365; // Daily theta
+        }
+
+        function bsVega(S, K, T, r, sigma) {
+            if (T <= 0) return 0;
+            const d1 = bsD1(S, K, T, r, sigma);
+            return S * Math.sqrt(T) * normalPDF(d1) / 100; // Per 1% vol move
+        }
+
+        function updateOptionsGreeks() {
+            const S = 100; // Normalized spot
+            const K = parseFloat(document.getElementById('strikePercent').value);
+            const T = parseFloat(document.getElementById('optionMaturity').value) / 12;
+            const r = parseFloat(document.getElementById('riskFreeRate').value) / 100;
+            const sigma = parseFloat(document.getElementById('impliedVol').value) / 100;
+
+            const price = bsCallPrice(S, K, T, r, sigma);
+            const delta = bsDelta(S, K, T, r, sigma);
+            const gamma = bsGamma(S, K, T, r, sigma);
+            const theta = bsTheta(S, K, T, r, sigma);
+            const vega = bsVega(S, K, T, r, sigma);
+            const leverage = delta / (price / S);
+
+            document.getElementById('callPrice').textContent = price.toFixed(2) + '%';
+            document.getElementById('optionDelta').textContent = delta.toFixed(3);
+            document.getElementById('optionGamma').textContent = gamma.toFixed(4);
+            document.getElementById('optionTheta').textContent = theta.toFixed(3) + '%';
+            document.getElementById('optionVega').textContent = vega.toFixed(3) + '%';
+            document.getElementById('optionLeverage').textContent = leverage.toFixed(2) + 'x';
+
+            // Update payoff chart
+            updatePayoffChart(S, K, T, r, sigma, price);
+        }
+
+        function updatePayoffChart(S, K, T, r, sigma, premium) {
+            const moves = [];
+            const callPayoff = [];
+            const equityPayoff = [];
+
+            for (let move = -50; move <= 100; move += 2) {
+                const newS = S * (1 + move / 100);
+                moves.push(move);
+                
+                // Call payoff at expiry (as % of initial investment)
+                const intrinsic = Math.max(0, newS - K);
+                const callPnL = ((intrinsic - premium) / premium) * 100;
+                callPayoff.push(callPnL);
+                
+                // Direct equity
+                equityPayoff.push(move);
+            }
+
+            charts.payoff.data = {
+                labels: moves,
+                datasets: [
+                    {
+                        label: 'Call Option P&L',
+                        data: callPayoff,
+                        borderColor: '#00b4ff',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Direct Equity',
+                        data: equityPayoff,
+                        borderColor: '#00ff88',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        borderDash: [5, 5]
+                    }
+                ]
+            };
+            charts.payoff.update();
+        }
+
+        function updateOptionsStrategy() {
+            const data = exportData.rawData;
+            if (data.length < 100) return;
+
+            const T = parseFloat(document.getElementById('optionMaturity').value) / 12;
+            const K = parseFloat(document.getElementById('strikePercent').value) / 100;
+            const r = parseFloat(document.getElementById('riskFreeRate').value) / 100;
+            const sigma = parseFloat(document.getElementById('impliedVol').value) / 100;
+            const rollMonths = parseInt(document.getElementById('rollFrequency').value);
+            const leverage = parseFloat(document.getElementById('leverageRatio').value);
+            const rollDays = rollMonths * 21; // Trading days per month
+
+            // Simulate rolling options strategy
+            const equityIndex = [100];
+            const optionsIndex = [100];
+            const deltaHistory = [];
+            
+            let optionPosition = null;
+            let optionValue = 100;
+            let totalPremiumPaid = 0;
+            let rollCount = 0;
+
+            for (let i = 1; i < data.length; i++) {
+                const d = data[i];
+                const prevD = data[i - 1];
+                
+                // Daily equity return
+                const eqReturn = d.composite / prevD.composite - 1;
+                equityIndex.push(equityIndex[equityIndex.length - 1] * (1 + eqReturn));
+
+                // Check if we need to roll
+                const daysSinceRoll = optionPosition ? i - optionPosition.startDay : rollDays;
+                const needsRoll = !optionPosition || daysSinceRoll >= rollDays;
+
+                if (needsRoll) {
+                    // Close existing position if any
+                    if (optionPosition) {
+                        // Remaining time
+                        const remainingT = Math.max(0.01, T - daysSinceRoll / 252);
+                        const currentSpot = d.composite / optionPosition.initialSpot;
+                        const closePrice = bsCallPrice(currentSpot, K, remainingT, r, sigma);
+                        const closeDelta = bsDelta(currentSpot, K, remainingT, r, sigma);
+                        
+                        // P&L from this option
+                        const optionReturn = (closePrice - optionPosition.entryPrice) / optionPosition.entryPrice;
+                        optionValue *= (1 + optionReturn * leverage);
+                    }
+
+                    // Open new position
+                    const entryPrice = bsCallPrice(1, K, T, r, sigma);
+                    totalPremiumPaid += entryPrice * 100;
+                    rollCount++;
+
+                    optionPosition = {
+                        startDay: i,
+                        initialSpot: d.composite,
+                        entryPrice: entryPrice,
+                        strike: K
+                    };
+                }
+
+                // Mark-to-market
+                if (optionPosition) {
+                    const daysHeld = i - optionPosition.startDay;
+                    const remainingT = Math.max(0.01, T - daysHeld / 252);
+                    const currentSpot = d.composite / optionPosition.initialSpot;
+                    const currentPrice = bsCallPrice(currentSpot, K, remainingT, r, sigma);
+                    const currentDelta = bsDelta(currentSpot, K, remainingT, r, sigma);
+                    
+                    deltaHistory.push({
+                        date: d.date,
+                        delta: currentDelta * leverage
+                    });
+
+                    // Daily P&L
+                    if (i > optionPosition.startDay) {
+                        const prevSpot = prevD.composite / optionPosition.initialSpot;
+                        const prevT = Math.max(0.01, T - (daysHeld - 1) / 252);
+                        const prevPrice = bsCallPrice(prevSpot, K, prevT, r, sigma);
+                        
+                        const dailyReturn = (currentPrice - prevPrice) / optionPosition.entryPrice;
+                        optionValue *= (1 + dailyReturn * leverage);
+                    }
+                }
+
+                optionsIndex.push(optionValue);
+            }
+
+            // Calculate statistics
+            const equityReturns = [];
+            const optionReturns = [];
+            for (let i = 1; i < equityIndex.length; i++) {
+                equityReturns.push(equityIndex[i] / equityIndex[i - 1] - 1);
+                optionReturns.push(optionsIndex[i] / optionsIndex[i - 1] - 1);
+            }
+
+            const equityTotalReturn = (equityIndex[equityIndex.length - 1] / equityIndex[0] - 1) * 100;
+            const optionsTotalReturn = (optionsIndex[optionsIndex.length - 1] / optionsIndex[0] - 1) * 100;
+            const excessReturn = optionsTotalReturn - equityTotalReturn;
+
+            const optionsVol = stdDev(optionReturns) * Math.sqrt(252) * 100;
+            const optionsSharpe = optionReturns.length > 0 ? 
+                (mean(optionReturns) * 252) / (stdDev(optionReturns) * Math.sqrt(252)) : 0;
+
+            // Max drawdown
+            let maxDD = 0;
+            let peak = optionsIndex[0];
+            for (const val of optionsIndex) {
+                if (val > peak) peak = val;
+                const dd = (peak - val) / peak;
+                if (dd > maxDD) maxDD = dd;
+            }
+
+            // Average theta cost per month
+            const avgThetaCost = (rollCount > 0) ? totalPremiumPaid / rollCount / 100 : 0;
+
+            // Update displays
+            document.getElementById('stratReturn').textContent = (optionsTotalReturn >= 0 ? '+' : '') + optionsTotalReturn.toFixed(2) + '%';
+            document.getElementById('stratReturn').className = 'strat-stat-value ' + (optionsTotalReturn >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById('equityReturnOpt').textContent = (equityTotalReturn >= 0 ? '+' : '') + equityTotalReturn.toFixed(2) + '%';
+            document.getElementById('equityReturnOpt').className = 'strat-stat-value ' + (equityTotalReturn >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById('excessReturn').textContent = (excessReturn >= 0 ? '+' : '') + excessReturn.toFixed(2) + '%';
+            document.getElementById('excessReturn').className = 'strat-stat-value ' + (excessReturn >= 0 ? 'positive' : 'negative');
+            
+            document.getElementById('stratVol').textContent = optionsVol.toFixed(1) + '%';
+            document.getElementById('stratSharpe').textContent = optionsSharpe.toFixed(2);
+            document.getElementById('stratDrawdown').textContent = '-' + (maxDD * 100).toFixed(1) + '%';
+            document.getElementById('stratDrawdown').className = 'strat-stat-value negative';
+            
+            document.getElementById('totalPremium').textContent = totalPremiumPaid.toFixed(1) + '%';
+            document.getElementById('avgTheta').textContent = '-' + (avgThetaCost * 100).toFixed(2) + '%';
+
+            // Update charts
+            const chartData = data.map((d, i) => ({
+                date: d.date,
+                equity: equityIndex[i],
+                options: optionsIndex[i],
+                excess: optionsIndex[i] - equityIndex[i]
+            }));
+
+            charts.options.data = {
+                datasets: [
+                    {
+                        label: 'Equity',
+                        data: chartData.map(d => ({ x: d.date, y: d.equity })),
+                        borderColor: '#00ff88',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Options',
+                        data: chartData.map(d => ({ x: d.date, y: d.options })),
+                        borderColor: '#00b4ff',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Excess',
+                        data: chartData.map(d => ({ x: d.date, y: d.excess + 100 })),
+                        borderColor: '#ff9500',
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        borderDash: [5, 5],
+                        tension: 0.1
+                    }
+                ]
+            };
+            charts.options.update();
+
+            // Delta chart
+            charts.delta.data = {
+                datasets: [
+                    {
+                        label: 'Delta',
+                        data: deltaHistory.map(d => ({ x: d.date, y: d.delta })),
+                        borderColor: '#00b4ff',
+                        backgroundColor: 'rgba(0, 180, 255, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.1
+                    }
+                ]
+            };
+            charts.delta.update();
+        }
+    </script>
+</body>
+</html>
