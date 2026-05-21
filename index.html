@@ -1596,7 +1596,7 @@
         <div id="analysisSection" class="hidden">
             <div class="info-banner">
                 <div>
-                    <strong>Analysis Framework:</strong> Compares the 40% SPX + 60% NDX composite against FTSE US Focus Parity USD-hedged, 
+                    <strong>Analysis Framework:</strong> Compares the <span id="bannerSpxWeight">40</span>% SPX + <span id="bannerNdxWeight">60</span>% NDX composite against FTSE US Focus Parity USD-hedged,
                     then examines how this equity basis differential may explain the relative performance between BGCB EUR and FTSE Global Focus Hedged (EUR).
                 </div>
             </div>
@@ -2495,6 +2495,10 @@
             const spxW = parseInt(document.getElementById('spxWeight').value);
             document.getElementById('spxWeightValue').textContent = `${spxW}%`;
             document.getElementById('ndxWeightValue').textContent = `${100 - spxW}%`;
+            const bannerSpx = document.getElementById('bannerSpxWeight');
+            const bannerNdx = document.getElementById('bannerNdxWeight');
+            if (bannerSpx) bannerSpx.textContent = spxW;
+            if (bannerNdx) bannerNdx.textContent = 100 - spxW;
             updateAnalysis();
         }
 
